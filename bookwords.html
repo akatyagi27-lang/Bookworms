@@ -1,0 +1,670 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="apple-mobile-web-app-title" content="BookWords" />
+  <meta name="theme-color" content="#2C1810" />
+  <title>BookWords</title>
+
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,600;1,400&family=Crimson+Pro:ital,wght@0,300;0,400;1,300&display=swap" rel="stylesheet" />
+
+  <!-- PWA Manifest inline -->
+  <script>
+    const manifest = {
+      name: "BookWords",
+      short_name: "BookWords",
+      description: "Collect words from your reading",
+      start_url: "./",
+      display: "standalone",
+      background_color: "#F5EFE3",
+      theme_color: "#2C1810",
+      icons: [
+        { src: "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 192 192'%3E%3Crect width='192' height='192' rx='40' fill='%232C1810'/%3E%3Ctext x='96' y='130' font-size='100' text-anchor='middle'%3E📖%3C/text%3E%3C/svg%3E", sizes: "192x192", type: "image/svg+xml" }
+      ]
+    };
+    const blob = new Blob([JSON.stringify(manifest)], {type: 'application/json'});
+    const url = URL.createObjectURL(blob);
+    document.write('<link rel="manifest" href="' + url + '">');
+  </script>
+
+  <style>
+    :root {
+      --ink: #2C1810;
+      --ink-light: #4A3728;
+      --gold: #E8C98A;
+      --gold-dark: #C9A96E;
+      --cream: #F5EFE3;
+      --paper: #FFFDF7;
+      --brown: #8B6F47;
+      --brown-light: #B0956D;
+      --border: #E8DCC8;
+      --safe-top: env(safe-area-inset-top, 0px);
+      --safe-bottom: env(safe-area-inset-bottom, 0px);
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+
+    html, body {
+      height: 100%;
+      background: var(--cream);
+      font-family: 'Crimson Pro', 'Georgia', serif;
+      color: var(--ink);
+      overscroll-behavior: none;
+    }
+
+    #app {
+      display: flex;
+      flex-direction: column;
+      height: 100%;
+      max-width: 480px;
+      margin: 0 auto;
+    }
+
+    /* HEADER */
+    .header {
+      background: var(--ink);
+      color: var(--cream);
+      padding: calc(16px + var(--safe-top)) 20px 16px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-shrink: 0;
+    }
+    .header-left { display: flex; align-items: center; gap: 10px; }
+    .header-title { font-family: 'Playfair Display', serif; font-size: 22px; font-weight: 400; letter-spacing: 0.02em; }
+    .header-sub { font-size: 11px; opacity: 0.55; font-style: italic; margin-top: 1px; }
+    .widget-btn {
+      background: none;
+      border: 1px solid rgba(245,239,227,0.25);
+      color: var(--gold);
+      padding: 6px 14px;
+      border-radius: 20px;
+      font-size: 11px;
+      font-family: 'Crimson Pro', serif;
+      letter-spacing: 0.06em;
+      cursor: pointer;
+    }
+
+    /* NAV */
+    .nav {
+      display: flex;
+      background: #3D2B1F;
+      flex-shrink: 0;
+    }
+    .nav-btn {
+      flex: 1;
+      padding: 11px 0;
+      background: none;
+      border: none;
+      border-bottom: 2px solid transparent;
+      color: rgba(245,239,227,0.45);
+      font-size: 11px;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      font-family: 'Crimson Pro', serif;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    .nav-btn.active {
+      color: var(--gold);
+      border-bottom-color: var(--gold);
+    }
+
+    /* SCROLLABLE BODY */
+    .body {
+      flex: 1;
+      overflow-y: auto;
+      -webkit-overflow-scrolling: touch;
+      padding: 16px;
+      padding-bottom: calc(16px + var(--safe-bottom));
+    }
+
+    /* BOOK ROW */
+    .book-row {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      background: var(--paper);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 12px 14px;
+      margin-bottom: 16px;
+    }
+    .book-icon { color: var(--brown); flex-shrink: 0; font-size: 18px; }
+    .book-name { flex: 1; font-size: 14px; font-style: italic; color: var(--ink); }
+    .book-name.empty { color: var(--brown-light); }
+    .change-btn {
+      background: none;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 4px 10px;
+      font-size: 11px;
+      color: var(--brown);
+      font-family: 'Crimson Pro', serif;
+      cursor: pointer;
+    }
+    .save-btn {
+      background: var(--ink);
+      border: none;
+      border-radius: 6px;
+      padding: 5px 12px;
+      font-size: 11px;
+      color: var(--cream);
+      font-family: 'Crimson Pro', serif;
+      cursor: pointer;
+    }
+    .book-input {
+      flex: 1;
+      border: 1px solid var(--gold-dark);
+      border-radius: 6px;
+      padding: 5px 10px;
+      font-size: 13px;
+      font-family: 'Crimson Pro', serif;
+      background: var(--cream);
+      color: var(--ink);
+      outline: none;
+    }
+
+    /* WORD CARDS */
+    .card {
+      background: var(--paper);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 16px 16px 14px;
+      margin-bottom: 12px;
+      position: relative;
+      animation: fadeIn 0.3s ease;
+    }
+    @keyframes fadeIn { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
+
+    .word-badge { display: inline-block; background: #EDE4D4; color: #6B5040; font-size: 10px; padding: 2px 9px; border-radius: 20px; margin-bottom: 8px; letter-spacing: 0.05em; }
+    .word-title { font-family: 'Playfair Display', serif; font-size: 24px; font-weight: 400; color: var(--ink); line-height: 1.1; }
+    .word-pos { font-size: 12px; color: var(--brown); font-style: italic; margin: 3px 0 10px; }
+    .word-def { font-size: 15px; line-height: 1.65; color: var(--ink-light); margin-bottom: 10px; }
+    .word-example { font-size: 13px; font-style: italic; color: #6B5040; border-left: 2px solid var(--gold-dark); padding-left: 10px; margin-bottom: 8px; line-height: 1.5; }
+    .word-etym { font-size: 11px; color: #9B7E5E; margin-top: 4px; }
+    .word-note { font-size: 12px; color: var(--brown); font-style: italic; margin-top: 8px; }
+    .word-date { font-size: 10px; color: var(--brown-light); margin-top: 5px; }
+    .delete-btn {
+      position: absolute; top: 12px; right: 12px;
+      background: none; border: none; cursor: pointer;
+      color: var(--gold-dark); opacity: 0.45; font-size: 16px;
+      padding: 4px; line-height: 1;
+      transition: opacity 0.2s;
+    }
+    .delete-btn:active { opacity: 1; }
+
+    /* EMPTY STATE */
+    .empty-state { text-align: center; padding: 50px 20px; color: #9B7E5E; }
+    .empty-icon { font-size: 44px; margin-bottom: 14px; }
+    .empty-text { font-family: 'Playfair Display', serif; font-size: 18px; margin-bottom: 6px; }
+    .empty-sub { font-size: 13px; opacity: 0.7; font-style: italic; }
+
+    /* ADD WORD FORM */
+    .form-card {
+      background: var(--paper);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 18px;
+    }
+    .form-group { margin-bottom: 16px; }
+    .form-label { display: block; font-size: 10px; color: var(--brown); text-transform: uppercase; letter-spacing: 0.09em; margin-bottom: 7px; }
+    .form-input {
+      width: 100%;
+      padding: 12px 14px;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      font-size: 16px;
+      font-family: 'Crimson Pro', serif;
+      background: var(--cream);
+      color: var(--ink);
+      outline: none;
+      transition: border-color 0.2s, box-shadow 0.2s;
+    }
+    .form-input:focus {
+      border-color: var(--brown);
+      box-shadow: 0 0 0 3px rgba(139,111,71,0.12);
+    }
+    .lookup-btn {
+      width: 100%;
+      padding: 13px;
+      background: var(--ink);
+      color: var(--cream);
+      border: none;
+      border-radius: 8px;
+      font-size: 15px;
+      font-family: 'Playfair Display', serif;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      transition: background 0.2s;
+      letter-spacing: 0.02em;
+    }
+    .lookup-btn:disabled { opacity: 0.45; }
+    .lookup-btn:active:not(:disabled) { background: #1a0e08; }
+
+    .def-preview {
+      background: var(--cream);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 16px;
+      margin-top: 14px;
+      animation: fadeIn 0.3s ease;
+    }
+
+    .add-btn {
+      width: 100%;
+      padding: 13px;
+      background: var(--brown);
+      color: var(--paper);
+      border: none;
+      border-radius: 8px;
+      font-size: 16px;
+      font-family: 'Playfair Display', serif;
+      cursor: pointer;
+      margin-top: 16px;
+      letter-spacing: 0.02em;
+      transition: background 0.2s;
+    }
+    .add-btn:disabled { opacity: 0.35; }
+    .add-btn:active:not(:disabled) { background: #6B5040; }
+
+    .error-msg { color: #C0392B; font-size: 13px; margin-top: 10px; font-style: italic; }
+
+    /* LOADING DOTS */
+    .dots { display: inline-flex; gap: 4px; align-items: center; }
+    .dot {
+      width: 5px; height: 5px; border-radius: 50%;
+      background: var(--cream);
+      animation: bounce 1.2s ease-in-out infinite;
+    }
+    .dot:nth-child(2) { animation-delay: 0.2s; }
+    .dot:nth-child(3) { animation-delay: 0.4s; }
+    @keyframes bounce { 0%,80%,100% { transform: scale(0.5); opacity: 0.4; } 40% { transform: scale(1); opacity: 1; } }
+
+    /* WIDGET VIEW */
+    #widget-view {
+      display: none;
+      flex-direction: column;
+      height: 100%;
+      background: var(--ink);
+      padding: calc(24px + var(--safe-top)) 24px calc(24px + var(--safe-bottom));
+      align-items: center;
+      justify-content: center;
+    }
+    #widget-view.active { display: flex; }
+    #main-view { display: flex; flex-direction: column; height: 100%; }
+    #main-view.hidden { display: none; }
+
+    .widget-back {
+      position: absolute;
+      top: calc(20px + var(--safe-top));
+      left: 20px;
+      background: none;
+      border: 1px solid rgba(245,239,227,0.2);
+      color: rgba(245,239,227,0.55);
+      padding: 7px 16px;
+      border-radius: 20px;
+      font-size: 12px;
+      font-family: 'Crimson Pro', serif;
+      cursor: pointer;
+      letter-spacing: 0.05em;
+    }
+    .widget-card {
+      background: var(--paper);
+      border-radius: 20px;
+      padding: 36px 28px 32px;
+      width: 100%;
+      max-width: 340px;
+      text-align: center;
+      box-shadow: 0 12px 50px rgba(0,0,0,0.45);
+      border: 1px solid var(--border);
+      animation: fadeIn 0.4s ease;
+    }
+    .widget-label { font-size: 10px; color: #9B7E5E; letter-spacing: 0.14em; text-transform: uppercase; margin-bottom: 22px; }
+    .widget-word { font-family: 'Playfair Display', serif; font-size: 38px; color: var(--ink); font-weight: 400; margin-bottom: 4px; line-height: 1.1; }
+    .widget-pos { font-size: 13px; color: var(--brown); font-style: italic; margin-bottom: 16px; }
+    .widget-def { font-size: 15px; line-height: 1.7; color: var(--ink-light); margin-bottom: 14px; }
+    .widget-example { font-size: 13px; font-style: italic; color: #6B5040; border-left: 2px solid var(--gold-dark); padding-left: 12px; text-align: left; margin-bottom: 12px; line-height: 1.5; }
+    .widget-etym { font-size: 11px; color: #9B7E5E; margin-bottom: 6px; }
+    .widget-book { font-size: 11px; color: var(--brown-light); font-style: italic; margin-top: 6px; }
+    .widget-next {
+      margin-top: 24px;
+      padding: 9px 28px;
+      background: var(--ink);
+      color: var(--gold);
+      border: none;
+      border-radius: 20px;
+      font-size: 12px;
+      font-family: 'Crimson Pro', serif;
+      letter-spacing: 0.07em;
+      cursor: pointer;
+    }
+    .widget-count { font-size: 10px; color: rgba(245,239,227,0.3); margin-top: 16px; letter-spacing: 0.06em; }
+    .widget-empty { color: rgba(245,239,227,0.6); text-align: center; font-family: 'Playfair Display', serif; font-size: 18px; }
+
+    /* TOAST */
+    .toast {
+      position: fixed;
+      bottom: calc(24px + var(--safe-bottom));
+      left: 50%;
+      transform: translateX(-50%) translateY(0);
+      background: var(--ink);
+      color: var(--gold);
+      padding: 10px 22px;
+      border-radius: 20px;
+      font-size: 13px;
+      font-family: 'Crimson Pro', serif;
+      box-shadow: 0 4px 20px rgba(0,0,0,0.35);
+      white-space: nowrap;
+      z-index: 999;
+      animation: toastIn 0.3s ease;
+      pointer-events: none;
+    }
+    @keyframes toastIn { from { opacity: 0; transform: translateX(-50%) translateY(10px); } to { opacity: 1; transform: translateX(-50%) translateY(0); } }
+  </style>
+</head>
+<body>
+<div id="app">
+
+  <!-- WIDGET VIEW -->
+  <div id="widget-view">
+    <button class="widget-back" onclick="showMain()">← Back</button>
+    <div id="widget-content"></div>
+  </div>
+
+  <!-- MAIN VIEW -->
+  <div id="main-view">
+    <div class="header">
+      <div class="header-left">
+        <span style="font-size:20px">📖</span>
+        <div>
+          <div class="header-title">BookWords</div>
+          <div class="header-sub" id="word-count">0 words collected</div>
+        </div>
+      </div>
+      <button class="widget-btn" onclick="showWidget()">Widget View</button>
+    </div>
+
+    <div class="nav">
+      <button class="nav-btn active" id="tab-library" onclick="switchTab('library')">Library</button>
+      <button class="nav-btn" id="tab-add" onclick="switchTab('add')">+ Add Word</button>
+    </div>
+
+    <!-- LIBRARY -->
+    <div class="body" id="view-library">
+      <div class="book-row">
+        <span class="book-icon">📚</span>
+        <div id="book-display" style="flex:1;display:flex;align-items:center;gap:8px;">
+          <span class="book-name empty" id="book-label">No book set</span>
+          <button class="change-btn" onclick="editBook()">Change</button>
+        </div>
+        <div id="book-edit" style="flex:1;display:none;align-items:center;gap:8px;">
+          <input class="book-input" id="book-input" placeholder="Book title..." onkeydown="if(event.key==='Enter')saveBook()" />
+          <button class="save-btn" onclick="saveBook()">Save</button>
+        </div>
+      </div>
+      <div id="words-list"></div>
+    </div>
+
+    <!-- ADD WORD -->
+    <div class="body" id="view-add" style="display:none;">
+      <div class="form-card">
+        <div class="form-group">
+          <label class="form-label">Word</label>
+          <input class="form-input" id="new-word" placeholder="Enter a word…" autocomplete="off" autocorrect="off" autocapitalize="none" spellcheck="false"
+            oninput="onWordInput()" onkeydown="if(event.key==='Enter')lookupWord()" />
+        </div>
+        <button class="lookup-btn" id="lookup-btn" onclick="lookupWord()" disabled>
+          <span>✦</span> Look up with AI
+        </button>
+        <div id="lookup-error" class="error-msg" style="display:none;"></div>
+        <div id="def-preview" style="display:none;"></div>
+
+        <div class="form-group" style="margin-top:16px;margin-bottom:0;">
+          <label class="form-label">Personal note (optional)</label>
+          <input class="form-input" id="new-note" placeholder="Where you found it, how it struck you…" />
+        </div>
+
+        <button class="add-btn" id="add-btn" onclick="addWord()" disabled>Add to Library</button>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<script>
+  const STORAGE_KEY = 'bookwords_v1';
+  const ROTATE_MS = 5.5 * 60 * 60 * 1000;
+  let state = { currentBook: '', words: [], widgetIndex: 0, lastRotated: null };
+  let fetchedDef = null;
+
+  // --- STORAGE ---
+  function loadState() {
+    try {
+      const s = localStorage.getItem(STORAGE_KEY);
+      if (s) state = JSON.parse(s);
+    } catch(e) {}
+    render();
+  }
+  function saveState() {
+    try { localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); } catch(e) {}
+  }
+
+  // --- RENDER ---
+  function render() {
+    document.getElementById('word-count').textContent = state.words.length + ' word' + (state.words.length !== 1 ? 's' : '') + ' collected';
+    const bookLabel = document.getElementById('book-label');
+    bookLabel.textContent = state.currentBook || 'No book set';
+    bookLabel.className = 'book-name' + (state.currentBook ? '' : ' empty');
+    renderWords();
+  }
+
+  function renderWords() {
+    const list = document.getElementById('words-list');
+    if (!state.words.length) {
+      list.innerHTML = `<div class="empty-state"><div class="empty-icon">📖</div><div class="empty-text">Your library is empty</div><div class="empty-sub">Add words you encounter while reading</div></div>`;
+      return;
+    }
+    list.innerHTML = state.words.map(w => `
+      <div class="card">
+        <button class="delete-btn" onclick="deleteWord(${w.id})" title="Remove">✕</button>
+        ${w.book ? `<div class="word-badge">📚 ${esc(w.book)}</div>` : ''}
+        <div class="word-title">${esc(w.word)}</div>
+        <div class="word-pos">${esc(w.partOfSpeech || '')}</div>
+        <div class="word-def">${esc(w.definition || '')}</div>
+        ${w.example ? `<div class="word-example">"${esc(w.example)}"</div>` : ''}
+        ${w.etymology ? `<div class="word-etym">🌿 ${esc(w.etymology)}</div>` : ''}
+        ${w.note ? `<div class="word-note">✏️ ${esc(w.note)}</div>` : ''}
+        <div class="word-date">Added ${esc(w.addedAt)}</div>
+      </div>`).join('');
+  }
+
+  function esc(s) {
+    return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+  }
+
+  // --- TABS ---
+  function switchTab(tab) {
+    document.getElementById('view-library').style.display = tab === 'library' ? 'block' : 'none';
+    document.getElementById('view-add').style.display = tab === 'add' ? 'block' : 'none';
+    document.getElementById('tab-library').className = 'nav-btn' + (tab === 'library' ? ' active' : '');
+    document.getElementById('tab-add').className = 'nav-btn' + (tab === 'add' ? ' active' : '');
+    if (tab === 'add') setTimeout(() => document.getElementById('new-word').focus(), 100);
+  }
+
+  // --- BOOK ---
+  function editBook() {
+    document.getElementById('book-display').style.display = 'none';
+    const edit = document.getElementById('book-edit');
+    edit.style.display = 'flex';
+    const inp = document.getElementById('book-input');
+    inp.value = state.currentBook;
+    setTimeout(() => inp.focus(), 50);
+  }
+  function saveBook() {
+    state.currentBook = document.getElementById('book-input').value.trim();
+    saveState();
+    document.getElementById('book-display').style.display = 'flex';
+    document.getElementById('book-edit').style.display = 'none';
+    render();
+    showToast('Book updated!');
+  }
+
+  // --- ADD WORD ---
+  function onWordInput() {
+    fetchedDef = null;
+    document.getElementById('def-preview').style.display = 'none';
+    document.getElementById('add-btn').disabled = true;
+    document.getElementById('lookup-error').style.display = 'none';
+    const val = document.getElementById('new-word').value.trim();
+    document.getElementById('lookup-btn').disabled = !val;
+  }
+
+  async function lookupWord() {
+    const word = document.getElementById('new-word').value.trim();
+    if (!word) return;
+    const btn = document.getElementById('lookup-btn');
+    btn.disabled = true;
+    btn.innerHTML = '<span class="dots"><span class="dot"></span><span class="dot"></span><span class="dot"></span></span>';
+    document.getElementById('lookup-error').style.display = 'none';
+    document.getElementById('def-preview').style.display = 'none';
+    document.getElementById('add-btn').disabled = true;
+    fetchedDef = null;
+
+    try {
+      const res = await fetch('https://api.anthropic.com/v1/messages', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          model: 'claude-sonnet-4-20250514',
+          max_tokens: 1000,
+          system: `You are a literary dictionary. When given a word, respond ONLY with a JSON object (no markdown, no backticks, no preamble) with these fields:
+{"definition":"concise definition 1-2 sentences","partOfSpeech":"noun/verb/adjective/etc","example":"short elegant example sentence","etymology":"brief interesting etymology 1 sentence"}`,
+          messages: [{ role: 'user', content: 'Define: ' + word }]
+        })
+      });
+      const data = await res.json();
+      const text = (data.content||[]).map(c => c.text||'').join('');
+      const clean = text.replace(/```json|```/g,'').trim();
+      fetchedDef = JSON.parse(clean);
+      document.getElementById('def-preview').innerHTML = `
+        <div class="def-preview">
+          <div class="word-title">${esc(word)}</div>
+          <div class="word-pos">${esc(fetchedDef.partOfSpeech)}</div>
+          <div class="word-def">${esc(fetchedDef.definition)}</div>
+          ${fetchedDef.example ? `<div class="word-example">"${esc(fetchedDef.example)}"</div>` : ''}
+          ${fetchedDef.etymology ? `<div class="word-etym">🌿 ${esc(fetchedDef.etymology)}</div>` : ''}
+        </div>`;
+      document.getElementById('def-preview').style.display = 'block';
+      document.getElementById('add-btn').disabled = false;
+    } catch(e) {
+      document.getElementById('lookup-error').textContent = 'Couldn\'t fetch definition. Check your connection.';
+      document.getElementById('lookup-error').style.display = 'block';
+    }
+    btn.disabled = false;
+    btn.innerHTML = '<span>✦</span> Look up with AI';
+  }
+
+  function addWord() {
+    if (!fetchedDef) return;
+    const word = document.getElementById('new-word').value.trim();
+    const note = document.getElementById('new-note').value.trim();
+    const entry = {
+      id: Date.now(),
+      word,
+      partOfSpeech: fetchedDef.partOfSpeech,
+      definition: fetchedDef.definition,
+      example: fetchedDef.example,
+      etymology: fetchedDef.etymology,
+      note,
+      book: state.currentBook,
+      addedAt: new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
+    };
+    state.words.unshift(entry);
+    saveState();
+    document.getElementById('new-word').value = '';
+    document.getElementById('new-note').value = '';
+    document.getElementById('def-preview').style.display = 'none';
+    document.getElementById('add-btn').disabled = true;
+    document.getElementById('lookup-btn').disabled = true;
+    fetchedDef = null;
+    switchTab('library');
+    render();
+    showToast('"' + word + '" added to your library');
+  }
+
+  function deleteWord(id) {
+    state.words = state.words.filter(w => w.id !== id);
+    saveState();
+    render();
+  }
+
+  // --- WIDGET ---
+  function getWidgetWord() {
+    if (!state.words.length) return null;
+    const now = Date.now();
+    if (!state.lastRotated || (now - state.lastRotated) > ROTATE_MS) {
+      state.widgetIndex = ((state.widgetIndex || 0) + 1) % state.words.length;
+      state.lastRotated = now;
+      saveState();
+    }
+    return state.words[state.widgetIndex % state.words.length];
+  }
+
+  function showWidget() {
+    const w = getWidgetWord();
+    const content = document.getElementById('widget-content');
+    if (!w) {
+      content.innerHTML = `<div class="widget-empty"><div style="font-size:44px;margin-bottom:16px">📖</div><div>Add some words first</div></div>`;
+    } else {
+      content.innerHTML = `
+        <div class="widget-card">
+          <div class="widget-label">Word of the moment</div>
+          <div class="widget-word">${esc(w.word)}</div>
+          <div class="widget-pos">${esc(w.partOfSpeech||'')}</div>
+          <div class="widget-def">${esc(w.definition||'')}</div>
+          ${w.example ? `<div class="widget-example">"${esc(w.example)}"</div>` : ''}
+          ${w.etymology ? `<div class="widget-etym">🌿 ${esc(w.etymology)}</div>` : ''}
+          ${w.book ? `<div class="widget-book">from ${esc(w.book)}</div>` : ''}
+          <button class="widget-next" onclick="nextWidgetWord()">Next word →</button>
+        </div>
+        <div class="widget-count">${state.words.length} word${state.words.length!==1?'s':''} in library</div>`;
+    }
+    document.getElementById('widget-view').classList.add('active');
+    document.getElementById('main-view').classList.add('hidden');
+  }
+
+  function nextWidgetWord() {
+    if (!state.words.length) return;
+    state.widgetIndex = ((state.widgetIndex||0) + 1) % state.words.length;
+    state.lastRotated = Date.now();
+    saveState();
+    showWidget();
+  }
+
+  function showMain() {
+    document.getElementById('widget-view').classList.remove('active');
+    document.getElementById('main-view').classList.remove('hidden');
+  }
+
+  // --- TOAST ---
+  function showToast(msg) {
+    const t = document.createElement('div');
+    t.className = 'toast';
+    t.textContent = msg;
+    document.body.appendChild(t);
+    setTimeout(() => t.remove(), 2500);
+  }
+
+  // --- INIT ---
+  loadState();
+</script>
+</body>
+</html>
